@@ -43,7 +43,7 @@ export default function ReportsPage() {
         shift: r.shift,
         clockIn: r.clockIn,
         clockOut: r.clockOut,
-        date: r.date,
+        date: (r.date as unknown) instanceof Date ? (r.date as unknown as Date).toISOString().split("T")[0] : String(r.date),
         status: r.status,
       }));
       setRecords(mapped);

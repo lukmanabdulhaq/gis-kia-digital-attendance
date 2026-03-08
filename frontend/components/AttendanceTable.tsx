@@ -82,7 +82,7 @@ export function AttendanceTable({ records, showOfficer = true }: AttendanceTable
         <TableBody>
           {records.map((r) => (
             <TableRow key={r.id} className="hover:bg-muted/30 transition-colors">
-              <TableCell className="font-mono text-sm">{r.date}</TableCell>
+              <TableCell className="font-mono text-sm">{(r.date as unknown) instanceof Date ? (r.date as unknown as Date).toISOString().split("T")[0] : String(r.date)}</TableCell>
               {showOfficer && (
                 <TableCell className="font-mono text-xs text-[#006400] dark:text-green-400 font-semibold">
                   {r.staffId}
