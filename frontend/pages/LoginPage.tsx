@@ -12,18 +12,25 @@ import { useTheme } from "../hooks/useTheme";
 import { Sun, Moon, Loader2, Lock, BadgeCheck } from "lucide-react";
 import backend from "~backend/client";
 
+function getRoleRedirect(role: string) {
+  if (role === "officer") return "/clock";
+  return "/dashboard";
+}
+
 export default function LoginPage() {
   const [staffId, setStaffId] = useState("");
   const [pin, setPin] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, user } = useAuth();
   const { isDark, toggle } = useTheme();
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    if (isAuthenticated) navigate("/dashboard");
-  }, [isAuthenticated, navigate]);
+    if (isAuthenticated && user) {
+      navigate(getRoleRedirect(user.role));
+    }
+  }, [isAuthenticated, user, navigate]);
 
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -34,9 +41,9 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const resp = await backend.auth.login({ staffId: staffId.trim().toUpperCase(), pin });
-      login(resp.token, resp.user);
+      login(resp.token, resp.user, resp.refreshToken);
       toast({ title: "Welcome!", description: `Logged in as ${resp.user.rank} ${resp.user.fullName}` });
-      navigate("/dashboard");
+      navigate(getRoleRedirect(resp.user.role));
     } catch (err: unknown) {
       console.error(err);
       const msg = err instanceof Error ? err.message : "Invalid credentials";
@@ -46,12 +53,14 @@ export default function LoginPage() {
     }
   };
 
-  const handleBiometric = () => {
-    setStaffId("GIS12345");
-    setPin("123456");
-    setTimeout(() => {
-      handleLogin();
-    }, 300);
+  const handleBiometricSuccess = (resp: {
+    token: string;
+    refreshToken: string;
+    user: { id: number; staffId: string; fullName: string; role: string; rank: string; shift: string; email: string };
+  }) => {
+    login(resp.token, resp.user, resp.refreshToken);
+    toast({ title: "Biometric Login!", description: `Welcome ${resp.user.rank} ${resp.user.fullName}` });
+    navigate(getRoleRedirect(resp.user.role));
   };
 
   return (
@@ -66,7 +75,6 @@ export default function LoginPage() {
 
       <div className="flex-1 flex items-center justify-center p-4">
         <div className="w-full max-w-md">
-          {/* Header Card */}
           <div className="bg-[#006400] rounded-t-2xl px-8 py-8 text-center text-white shadow-lg">
             <div className="flex justify-center mb-4">
               <div className="w-24 h-24 rounded-full bg-white/10 border-4 border-[#FFD700] flex items-center justify-center shadow-xl">
@@ -84,7 +92,6 @@ export default function LoginPage() {
             <p className="text-white/80 text-xs mt-0.5">Kotoka International Airport</p>
           </div>
 
-          {/* Form Card */}
           <div className="bg-card rounded-b-2xl shadow-xl border border-t-0 border-border px-8 py-8">
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
@@ -136,7 +143,11 @@ export default function LoginPage() {
             </div>
 
             <div className="flex justify-center">
-              <BiometricScanner onScanComplete={handleBiometric} disabled={loading} />
+              <BiometricScanner
+                staffId={staffId}
+                onLoginSuccess={handleBiometricSuccess}
+                disabled={loading}
+              />
             </div>
 
             <div className="mt-6 p-3 rounded-lg bg-muted/50 text-center">
@@ -151,7 +162,7 @@ export default function LoginPage() {
           <div className="mt-4 text-center">
             <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
               <BadgeCheck className="w-3 h-3 text-[#006400]" />
-              <span>Secure</span>
+              <span>JWT Secured</span>
               <span>•</span>
               <span>Encrypted</span>
               <span>•</span>

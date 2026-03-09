@@ -1,9 +1,14 @@
-import { Header, APIError, Gateway } from "encore.dev/api";
+import { Header, Cookie, APIError, Gateway } from "encore.dev/api";
 import { authHandler } from "encore.dev/auth";
+import { secret } from "encore.dev/config";
+import * as jwt from "jsonwebtoken";
 import db from "../db";
+
+const jwtSecret = secret("JWTSecret");
 
 interface AuthParams {
   authorization?: Header<"Authorization">;
+  session?: Cookie<"gis_session">;
 }
 
 export interface AuthData {
@@ -16,34 +21,49 @@ export interface AuthData {
   email: string;
 }
 
+export interface JWTPayload {
+  userId: string;
+  staffId: string;
+  fullName: string;
+  role: string;
+  rank: string;
+  shift: string;
+  email: string;
+  exp: number;
+}
+
+export function signToken(payload: Omit<JWTPayload, "exp">): string {
+  return jwt.sign(payload, jwtSecret(), { expiresIn: "1h" });
+}
+
+export function verifyToken(token: string): JWTPayload {
+  return jwt.verify(token, jwtSecret()) as JWTPayload;
+}
+
 export const auth = authHandler<AuthParams, AuthData>(async (params) => {
-  const token = params.authorization?.replace("Bearer ", "");
+  const token = params.authorization?.replace("Bearer ", "") ?? params.session?.value;
   if (!token) throw APIError.unauthenticated("missing token");
-  const [staffId, pin] = token.split(":");
-  if (!staffId || !pin) throw APIError.unauthenticated("invalid token format");
-  const user = await db.queryRow<{
-    id: number;
-    staff_id: string;
-    full_name: string;
-    role: string;
-    rank: string;
-    shift: string;
-    email: string;
-    pin_hash: string;
-  }>`
-    SELECT id, staff_id, full_name, role, rank, shift, email, pin_hash
-    FROM users WHERE staff_id = ${staffId}
+
+  let payload: JWTPayload;
+  try {
+    payload = verifyToken(token);
+  } catch {
+    throw APIError.unauthenticated("invalid or expired token");
+  }
+
+  const user = await db.queryRow<{ id: number; staff_id: string }>`
+    SELECT id, staff_id FROM users WHERE id = ${parseInt(payload.userId)}
   `;
-  if (!user) throw APIError.unauthenticated("invalid credentials");
-  if (user.pin_hash !== pin) throw APIError.unauthenticated("invalid credentials");
+  if (!user) throw APIError.unauthenticated("user not found");
+
   return {
-    userID: String(user.id),
-    staffId: user.staff_id,
-    fullName: user.full_name,
-    role: user.role,
-    rank: user.rank,
-    shift: user.shift,
-    email: user.email,
+    userID: payload.userId,
+    staffId: payload.staffId,
+    fullName: payload.fullName,
+    role: payload.role,
+    rank: payload.rank,
+    shift: payload.shift,
+    email: payload.email,
   };
 });
 

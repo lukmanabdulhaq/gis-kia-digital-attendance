@@ -1,14 +1,18 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import { useAuth } from "../hooks/useAuth";
 import { useBackend } from "../hooks/useBackend";
 import { StatsCard } from "../components/StatsCard";
 import { AttendanceTable, AttendanceRow } from "../components/AttendanceTable";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Users, Clock, AlertTriangle, CheckCircle, RefreshCw, TrendingUp, Link } from "lucide-react";
+import { Users, Clock, AlertTriangle, CheckCircle, RefreshCw, TrendingUp, Radio, Wifi } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+
+const POLL_INTERVAL = 30000;
 
 function LiveClock() {
   const [time, setTime] = useState(new Date());
@@ -29,6 +33,15 @@ function LiveClock() {
   );
 }
 
+function LiveIndicator({ active }: { active: boolean }) {
+  return (
+    <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <span className={`w-2 h-2 rounded-full ${active ? "bg-green-500 animate-pulse" : "bg-gray-400"}`} />
+      {active ? "Live" : "Paused"}
+    </span>
+  );
+}
+
 export default function DashboardPage() {
   const { token, user } = useAuth();
   const client = useBackend(token);
@@ -39,9 +52,16 @@ export default function DashboardPage() {
   const [todayRecord, setTodayRecord] = useState<{ clockIn: Date | null; clockOut: Date | null; status: string } | null>(null);
   const [records, setRecords] = useState<AttendanceRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [polling, setPolling] = useState(true);
+  const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const [musterOpen, setMusterOpen] = useState(false);
+  const [musterShift, setMusterShift] = useState("morning");
+  const [musterLoading, setMusterLoading] = useState(false);
+
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [statsResp, todayResp, listResp] = await Promise.all([
         client.attendance.attendanceStats(),
@@ -63,15 +83,57 @@ export default function DashboardPage() {
           status: r.status,
         }))
       );
+      setLastUpdated(new Date());
     } catch (err) {
       console.error(err);
-      toast({ title: "Error loading dashboard", variant: "destructive" });
+      if (!silent) toast({ title: "Error loading dashboard", variant: "destructive" });
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [client]);
 
-  useEffect(() => { fetchData(); }, [fetchData]);
+  const schedulePoll = useCallback(() => {
+    if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    pollTimerRef.current = setTimeout(() => {
+      fetchData(true).then(() => schedulePoll());
+    }, POLL_INTERVAL);
+  }, [fetchData]);
+
+  useEffect(() => {
+    fetchData();
+    schedulePoll();
+    return () => {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+    };
+  }, []);
+
+  const handleTogglePolling = () => {
+    if (polling) {
+      if (pollTimerRef.current) clearTimeout(pollTimerRef.current);
+      setPolling(false);
+    } else {
+      setPolling(true);
+      schedulePoll();
+    }
+  };
+
+  const handleMuster = async () => {
+    setMusterLoading(true);
+    try {
+      const resp = await client.attendance.muster({ shift: musterShift });
+      toast({
+        title: "Roll Call Initiated!",
+        description: `${resp.notifiedOfficers.length} officers in ${musterShift} shift notified. ${resp.sent} push notifications sent.`,
+      });
+      setMusterOpen(false);
+    } catch (err: unknown) {
+      console.error(err);
+      const msg = err instanceof Error ? err.message : "Muster failed";
+      toast({ title: "Muster Failed", description: msg, variant: "destructive" });
+    } finally {
+      setMusterLoading(false);
+    }
+  };
 
   const isAdmin = user?.role === "admin";
   const isSupervisor = user?.role === "supervisor" || isAdmin;
@@ -87,15 +149,26 @@ export default function DashboardPage() {
             {user?.shift?.charAt(0).toUpperCase() + (user?.shift?.slice(1) ?? "")} Shift · {user?.staffId}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <LiveClock />
-          <Button variant="outline" size="icon" onClick={fetchData} disabled={loading}>
-            <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
-          </Button>
+          <div className="flex items-center gap-2">
+            <LiveIndicator active={polling} />
+            <Button variant="outline" size="icon" onClick={() => fetchData()} disabled={loading} title="Refresh">
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleTogglePolling} title={polling ? "Pause live updates" : "Resume live updates"}>
+              <Wifi className={`w-4 h-4 ${polling ? "text-green-500" : "text-muted-foreground"}`} />
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Stats Cards */}
+      {lastUpdated && (
+        <p className="text-xs text-muted-foreground">
+          Last updated: {lastUpdated.toLocaleTimeString("en-GH")} · Auto-refreshes every 30s
+        </p>
+      )}
+
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatsCard title="Today Present" value={stats.todayPresent} icon={CheckCircle} color="green" />
         <StatsCard title="Today Late" value={stats.todayLate} icon={AlertTriangle} color="gold" />
@@ -103,7 +176,6 @@ export default function DashboardPage() {
         <StatsCard title="All Time Present" value={stats.totalPresent} icon={TrendingUp} color="green" subtitle="All records" />
       </div>
 
-      {/* Officer: Personal Status */}
       {user?.role === "officer" && (
         <div className="rounded-xl border border-border bg-card p-5 shadow-sm">
           <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
@@ -133,10 +205,7 @@ export default function DashboardPage() {
           ) : (
             <div className="flex items-center justify-between flex-wrap gap-4">
               <p className="text-muted-foreground">You haven't clocked in today yet.</p>
-              <Button
-                className="bg-[#006400] hover:bg-[#005000] text-white"
-                onClick={() => navigate("/clock")}
-              >
+              <Button className="bg-[#006400] hover:bg-[#005000] text-white" onClick={() => navigate("/clock")}>
                 <Clock className="w-4 h-4 mr-2" /> Go to Clock In
               </Button>
             </div>
@@ -144,9 +213,8 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Admin: Quick Links */}
-      {isAdmin && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {(isAdmin || isSupervisor) && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <button
             onClick={() => navigate("/admin/users")}
             className="rounded-xl border border-[#006400]/30 bg-[#006400]/5 hover:bg-[#006400]/10 p-4 text-left transition-colors group"
@@ -163,10 +231,17 @@ export default function DashboardPage() {
             <p className="font-semibold text-[#B8860B]">Reports & Analytics</p>
             <p className="text-xs text-muted-foreground mt-1">View attendance trends and export data</p>
           </button>
+          <button
+            onClick={() => setMusterOpen(true)}
+            className="rounded-xl border border-red-300 bg-red-50 hover:bg-red-100 dark:bg-red-950/20 dark:border-red-800 dark:hover:bg-red-900/30 p-4 text-left transition-colors"
+          >
+            <Radio className="w-6 h-6 text-red-600 mb-2" />
+            <p className="font-semibold text-red-600">Initiate Roll Call</p>
+            <p className="text-xs text-muted-foreground mt-1">Send muster alert to shift officers</p>
+          </button>
         </div>
       )}
 
-      {/* Attendance Table */}
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
         <div className="px-5 py-4 border-b border-border flex items-center justify-between">
           <h2 className="font-semibold text-lg">
@@ -186,6 +261,51 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
+
+      <Dialog open={musterOpen} onOpenChange={setMusterOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Radio className="w-5 h-5 text-red-600" /> Initiate Roll Call
+            </DialogTitle>
+            <DialogDescription>
+              Select the shift to alert. Officers will receive a push notification to clock in immediately.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Select Shift</p>
+              <Select value={musterShift} onValueChange={setMusterShift}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="morning">Morning Shift</SelectItem>
+                  <SelectItem value="afternoon">Afternoon Shift</SelectItem>
+                  <SelectItem value="night">Night Shift</SelectItem>
+                  <SelectItem value="all">All Shifts</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+              <p className="text-xs text-red-700 dark:text-red-400 font-medium">
+                This will immediately send push notifications to all officers in the selected shift.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setMusterOpen(false)}>Cancel</Button>
+            <Button
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleMuster}
+              disabled={musterLoading}
+            >
+              {musterLoading ? <RefreshCw className="w-4 h-4 mr-2 animate-spin" /> : <Radio className="w-4 h-4 mr-2" />}
+              {musterLoading ? "Sending…" : "Initiate Roll Call"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Toaster />
     </div>

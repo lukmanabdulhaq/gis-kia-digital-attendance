@@ -1,31 +1,141 @@
 import React, { useState } from "react";
+import { useToast } from "@/components/ui/use-toast";
+import backend from "~backend/client";
+
+interface LoginSuccessPayload {
+  token: string;
+  refreshToken: string;
+  user: {
+    id: number;
+    staffId: string;
+    fullName: string;
+    role: string;
+    rank: string;
+    shift: string;
+    email: string;
+  };
+}
 
 interface BiometricScannerProps {
-  onScanComplete: () => void;
+  staffId: string;
+  onLoginSuccess: (payload: LoginSuccessPayload) => void;
   disabled?: boolean;
 }
 
-export function BiometricScanner({ onScanComplete, disabled }: BiometricScannerProps) {
+function base64urlToArrayBuffer(base64url: string): ArrayBuffer {
+  const base64 = base64url.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const binary = atob(padded);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes.buffer;
+}
+
+function arrayBufferToBase64url(buf: ArrayBuffer): string {
+  const bytes = new Uint8Array(buf);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "");
+}
+
+export function BiometricScanner({ staffId, onLoginSuccess, disabled }: BiometricScannerProps) {
   const [scanning, setScanning] = useState(false);
   const [scanned, setScanned] = useState(false);
+  const { toast } = useToast();
 
-  const handleScan = () => {
+  const isWebAuthnSupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
+
+  const handleScan = async () => {
     if (disabled || scanning) return;
+
+    if (!isWebAuthnSupported) {
+      toast({
+        title: "Biometrics Not Supported",
+        description: "Your device/browser does not support WebAuthn. Please use PIN login.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!staffId.trim()) {
+      toast({
+        title: "Enter Staff ID First",
+        description: "Please enter your Staff ID before using biometric login.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setScanning(true);
     setScanned(false);
-    setTimeout(() => {
-      setScanning(false);
+
+    try {
+      const startResp = await backend.auth.webauthnAuthStart({ staffId: staffId.trim().toUpperCase() });
+
+      const challengeBuf = base64urlToArrayBuffer(startResp.challenge);
+
+      const allowCredentials: PublicKeyCredentialDescriptor[] = startResp.allowCredentials.map((c) => ({
+        type: "public-key" as const,
+        id: base64urlToArrayBuffer(c.id),
+      }));
+
+      const assertionOptions: PublicKeyCredentialRequestOptions = {
+        challenge: challengeBuf,
+        rpId: startResp.rpId,
+        timeout: startResp.timeout,
+        userVerification: (startResp.userVerification ?? "preferred") as UserVerificationRequirement,
+        allowCredentials,
+      };
+
+      const credential = await navigator.credentials.get({ publicKey: assertionOptions }) as PublicKeyCredential | null;
+      if (!credential) throw new Error("No credential returned");
+
+      const response = credential.response as AuthenticatorAssertionResponse;
+
+      const finishResp = await backend.auth.webauthnAuthFinish({
+        staffId: staffId.trim().toUpperCase(),
+        credentialId: arrayBufferToBase64url(credential.rawId),
+        clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+        authenticatorData: arrayBufferToBase64url(response.authenticatorData),
+        signature: arrayBufferToBase64url(response.signature),
+      });
+
       setScanned(true);
-      onScanComplete();
-    }, 2000);
+      onLoginSuccess(finishResp);
+    } catch (err: unknown) {
+      console.error(err);
+      const msg = err instanceof Error ? err.message : "Biometric authentication failed";
+      if (msg.includes("No biometric credentials registered")) {
+        toast({
+          title: "Not Registered",
+          description: "No biometric credentials found. Login with PIN first, then register your biometrics.",
+          variant: "destructive",
+        });
+      } else if ((err as DOMException)?.name === "NotAllowedError") {
+        toast({
+          title: "Biometric Cancelled",
+          description: "Authentication was cancelled or timed out. Please use PIN login.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Biometric Failed",
+          description: msg,
+          variant: "destructive",
+        });
+      }
+    } finally {
+      setScanning(false);
+    }
   };
 
   return (
     <button
       onClick={handleScan}
-      disabled={disabled || scanning}
+      disabled={disabled || scanning || !isWebAuthnSupported}
       className="flex flex-col items-center gap-3 group disabled:opacity-50 disabled:cursor-not-allowed"
       type="button"
+      title={!isWebAuthnSupported ? "Biometrics not supported on this device" : "Scan fingerprint / face to login"}
     >
       <div className="relative">
         {scanning && (
@@ -56,10 +166,102 @@ export function BiometricScanner({ onScanComplete, disabled }: BiometricScannerP
         </div>
       </div>
       <span className={`text-sm font-medium transition-colors ${
-        scanned ? "text-[#006400]" : "text-muted-foreground group-hover:text-[#006400]"
+        scanned ? "text-[#006400]"
+        : !isWebAuthnSupported ? "text-muted-foreground/50"
+        : "text-muted-foreground group-hover:text-[#006400]"
       }`}>
-        {scanned ? "✓ Verified" : scanning ? "Scanning…" : "Scan Fingerprint"}
+        {!isWebAuthnSupported
+          ? "Biometrics unavailable"
+          : scanned
+          ? "✓ Verified"
+          : scanning
+          ? "Scanning…"
+          : "Scan Fingerprint"}
       </span>
+    </button>
+  );
+}
+
+interface BiometricRegisterProps {
+  token: string;
+  staffId: string;
+  onSuccess?: () => void;
+}
+
+export function BiometricRegister({ token, staffId, onSuccess }: BiometricRegisterProps) {
+  const [registering, setRegistering] = useState(false);
+  const { toast } = useToast();
+
+  const isWebAuthnSupported = typeof window !== "undefined" && !!window.PublicKeyCredential;
+
+  const handleRegister = async () => {
+    if (!isWebAuthnSupported) {
+      toast({ title: "Not Supported", description: "WebAuthn not available on this device.", variant: "destructive" });
+      return;
+    }
+    setRegistering(true);
+    try {
+      const client = backend.with({ auth: async () => ({ authorization: `Bearer ${token}` }) });
+      const startResp = await client.auth.webauthnRegisterStart();
+
+      const challengeBuf = base64urlToArrayBuffer(startResp.challenge);
+      const userIdBuf = new TextEncoder().encode(startResp.userId);
+
+      const creationOptions: PublicKeyCredentialCreationOptions = {
+        challenge: challengeBuf,
+        rp: { id: startResp.rpId, name: startResp.rpName },
+        user: {
+          id: userIdBuf,
+          name: startResp.userName,
+          displayName: startResp.userDisplayName,
+        },
+        pubKeyCredParams: [
+          { type: "public-key", alg: -7 },
+          { type: "public-key", alg: -257 },
+        ],
+        timeout: startResp.timeout,
+        attestation: "none",
+        authenticatorSelection: {
+          authenticatorAttachment: "platform",
+          requireResidentKey: false,
+          userVerification: "preferred",
+        },
+      };
+
+      const credential = await navigator.credentials.create({ publicKey: creationOptions }) as PublicKeyCredential | null;
+      if (!credential) throw new Error("No credential created");
+
+      const response = credential.response as AuthenticatorAttestationResponse;
+      const rawPublicKey = response.getPublicKey?.() ?? null;
+
+      await client.auth.webauthnRegisterFinish({
+        credentialId: arrayBufferToBase64url(credential.rawId),
+        clientDataJSON: arrayBufferToBase64url(response.clientDataJSON),
+        attestationObject: arrayBufferToBase64url(response.attestationObject),
+        publicKey: rawPublicKey ? arrayBufferToBase64url(rawPublicKey) : "",
+      });
+
+      toast({ title: "Biometric Registered!", description: "Your fingerprint/face has been registered for future logins." });
+      onSuccess?.();
+    } catch (err: unknown) {
+      console.error(err);
+      const msg = err instanceof Error ? err.message : "Registration failed";
+      toast({ title: "Registration Failed", description: msg, variant: "destructive" });
+    } finally {
+      setRegistering(false);
+    }
+  };
+
+  if (!isWebAuthnSupported) return null;
+
+  return (
+    <button
+      onClick={handleRegister}
+      disabled={registering}
+      className="flex items-center gap-2 text-sm text-[#006400] hover:underline disabled:opacity-50"
+      type="button"
+    >
+      {registering ? "Registering…" : "Register Biometrics"}
     </button>
   );
 }

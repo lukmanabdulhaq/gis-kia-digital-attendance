@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 import { useTheme } from "../hooks/useTheme";
+import { usePushNotifications } from "../hooks/usePushNotifications";
 import { GhanaFlagBar } from "./GhanaFlag";
 import { GISLogo } from "./GISLogo";
 import { Button } from "@/components/ui/button";
@@ -37,9 +38,10 @@ const roleBadgeStyle: Record<string, string> = {
 };
 
 export function Layout() {
-  const { user, logout } = useAuth();
+  const { user, token, logout } = useAuth();
   const { isDark, toggle } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  usePushNotifications(token);
 
   const visibleLinks = navLinks.filter((l) => user && l.roles.includes(user.role));
 

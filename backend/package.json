@@ -7,7 +7,9 @@
     "build": "cd ../frontend \u0026\u0026 bun install \u0026\u0026 npx vite build --outDir=../backend/frontend/dist"
   },
   "dependencies": {
-    "encore.dev": "^1.53.2"
+    "bcryptjs": "^3.0.2",
+    "encore.dev": "^1.53.2",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "typescript": "^5.8.3"

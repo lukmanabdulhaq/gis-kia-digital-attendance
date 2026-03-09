@@ -27,6 +27,13 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function RoleBasedHome() {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  if (user.role === "officer") return <Navigate to="/clock" replace />;
+  return <Navigate to="/dashboard" replace />;
+}
+
 function AppInner() {
   useTheme();
 
@@ -41,7 +48,7 @@ function AppInner() {
           </ProtectedRoute>
         }
       >
-        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route index element={<RoleBasedHome />} />
         <Route path="dashboard" element={<DashboardPage />} />
         <Route path="clock" element={<ClockPage />} />
         <Route path="reports" element={<ReportsPage />} />
@@ -63,7 +70,7 @@ function AppInner() {
         />
         <Route path="about" element={<AboutPage />} />
       </Route>
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
