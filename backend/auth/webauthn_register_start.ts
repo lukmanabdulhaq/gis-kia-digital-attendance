@@ -39,7 +39,7 @@ export const webauthnRegisterStart = api<void, WebAuthnRegisterStartResponse>(
 
     return {
       challenge,
-      rpId: "gis-kia-digital-attendance-d6m5lmc82vjjsaq7am4g.lp.dev",
+      rpId: process.env.NODE_ENV === "production" ? "gis-kia-digital-attendance-d6m5lmc82vjjsaq7am4g.lp.dev" : "localhost",
       rpName: "GIS KIA Digital Attendance",
       userId: authData.userID,
       userName: authData.staffId,

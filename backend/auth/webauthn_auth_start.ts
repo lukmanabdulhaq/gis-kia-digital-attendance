@@ -43,7 +43,7 @@ export const webauthnAuthStart = api<WebAuthnAuthStartRequest, WebAuthnAuthStart
 
     return {
       challenge,
-      rpId: "gis-kia-digital-attendance-d6m5lmc82vjjsaq7am4g.lp.dev",
+      rpId: process.env.NODE_ENV === "production" ? "gis-kia-digital-attendance-d6m5lmc82vjjsaq7am4g.lp.dev" : "localhost",
       timeout: 60000,
       userVerification: "preferred",
       allowCredentials: credentials.map((c) => ({ type: "public-key", id: c.credential_id })),
