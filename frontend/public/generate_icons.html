@@ -1,0 +1,24 @@
+<!DOCTYPE html><html><body>
+<canvas id="c192" width="192" height="192"></canvas>
+<canvas id="c512" width="512" height="512"></canvas>
+<script>
+function drawIcon(canvas) {
+  const s = canvas.width, ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#006400';
+  ctx.beginPath(); ctx.arc(s/2,s/2,s/2,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle = '#FFD700'; ctx.lineWidth = s*0.04;
+  ctx.beginPath(); ctx.arc(s/2,s/2,s*0.38,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle = '#FFD700';
+  ctx.font = `bold ${s*0.22}px serif`; ctx.textAlign = 'center';
+  ctx.fillText('GIS', s/2, s*0.52);
+  ctx.fillStyle = 'white';
+  ctx.font = `${s*0.13}px serif`;
+  ctx.fillText('KIA', s/2, s*0.68);
+}
+['c192','c512'].forEach(id => {
+  const c = document.getElementById(id); drawIcon(c);
+  const a = document.createElement('a');
+  a.download = id === 'c192' ? 'icon-192.png' : 'icon-512.png';
+  a.href = c.toDataURL(); a.click();
+});
+</script></body></html>

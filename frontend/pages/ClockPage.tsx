@@ -73,6 +73,24 @@ export default function ClockPage() {
   const [geofence, setGeofence] = useState<GeofenceStatus>({ checking: false, allowed: null });
   const [showRegister, setShowRegister] = useState(false);
 
+  useEffect(() => {
+    if (!user) return;
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
+    const msg = new SpeechSynthesisUtterance(
+      `${greeting}, ${user.rank} ${user.fullName}. Welcome on board. You are logged in for the ${user.shift} shift. Please clock in to begin your duty.`
+    );
+    msg.rate = 0.92;
+    msg.pitch = 1.05;
+    msg.volume = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang === "en-GB") ?? voices.find(v => v.lang.startsWith("en")) ?? null;
+    if (preferred) msg.voice = preferred;
+    window.speechSynthesis.cancel();
+    setTimeout(() => window.speechSynthesis.speak(msg), 800);
+    return () => window.speechSynthesis.cancel();
+  }, [user?.id]);
+
   const checkGeolocation = useCallback(() => {
     if (!navigator.geolocation) {
       setGeofence({ checking: false, allowed: null, error: "GPS not supported" });
