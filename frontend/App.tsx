@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useAuth } from "./hooks/useAuth";
 import { useTheme } from "./hooks/useTheme";
+import { usePushNotifications } from "./hooks/usePushNotifications";
 import { Layout } from "./components/Layout";
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -36,6 +37,8 @@ function RoleBasedHome() {
 
 function AppInner() {
   useTheme();
+  const { token } = useAuth();
+  usePushNotifications(token);
 
   return (
     <Routes>

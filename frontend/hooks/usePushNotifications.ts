@@ -2,37 +2,42 @@ import { useEffect, useCallback } from "react";
 import backend from "~backend/client";
 
 const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  storageBucket: "",
-  messagingSenderId: "",
-  appId: "",
-  vapidKey: "",
+  apiKey: "AIzaSyC4Wmj8mBp0cGYpSEE5lMXXOsL5QCFmUyg",
+  authDomain: "gis-kia-digital-attendance.firebaseapp.com",
+  projectId: "gis-kia-digital-attendance",
+  storageBucket: "gis-kia-digital-attendance.firebasestorage.app",
+  messagingSenderId: "756395028845",
+  appId: "1:756395028845:web:3d17e95a8b6770d74aaa64",
+  vapidKey: "BErna1HBYoA5dz2ZU46cFaF1caDeXYDsqXfFvs8DOebywHHKyh_tgJf4APahmjsynpoHCx2ldkp7KLpOu4dFhXQ",
 };
 
-let firebaseApp: import("firebase/app").FirebaseApp | null = null;
 let messagingInstance: import("firebase/messaging").Messaging | null = null;
 
 async function getFirebaseMessaging() {
-  if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.messagingSenderId) return null;
   if (messagingInstance) return messagingInstance;
   const { initializeApp, getApps, getApp } = await import("firebase/app");
-  const { getMessaging, getToken, onMessage } = await import("firebase/messaging");
-  firebaseApp = getApps().length === 0 ? initializeApp(FIREBASE_CONFIG) : getApp();
-  messagingInstance = getMessaging(firebaseApp);
-  return { messaging: messagingInstance, getToken, onMessage };
+  const { getMessaging } = await import("firebase/messaging");
+  const app = getApps().length === 0 ? initializeApp(FIREBASE_CONFIG) : getApp();
+  messagingInstance = getMessaging(app);
+  return messagingInstance;
 }
 
 async function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) return null;
   try {
-    const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js");
-    if (FIREBASE_CONFIG.apiKey) {
-      reg.active?.postMessage({ type: "FIREBASE_CONFIG", config: FIREBASE_CONFIG });
+    const existing = await navigator.serviceWorker.getRegistration("/");
+    if (existing?.active) {
+      console.log("✅ Reusing existing service worker");
+      return existing;
     }
+    const reg = await navigator.serviceWorker.register("/firebase-messaging-sw.js", { scope: "/" });
+    await navigator.serviceWorker.ready;
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    const sw = reg.active ?? reg.waiting ?? reg.installing;
+    sw?.postMessage({ type: "FIREBASE_CONFIG", config: FIREBASE_CONFIG });
     return reg;
-  } catch {
+  } catch (e) {
+    console.error("SW registration failed:", e);
     return null;
   }
 }
@@ -41,37 +46,51 @@ export function usePushNotifications(token: string | null) {
   const requestAndSaveToken = useCallback(async () => {
     if (!token) return;
     if (!("Notification" in window)) return;
-    if (!FIREBASE_CONFIG.apiKey || !FIREBASE_CONFIG.vapidKey) return;
 
     const permission = await Notification.requestPermission();
-    if (permission !== "granted") return;
+    if (permission !== "granted") {
+      console.warn("Notification permission denied");
+      return;
+    }
 
+    console.log("🔧 Registering service worker...");
     await registerServiceWorker();
 
     try {
-      const firebase = await getFirebaseMessaging();
-      if (!firebase) return;
-      const { messaging, getToken, onMessage } = firebase as {
-        messaging: import("firebase/messaging").Messaging;
-        getToken: typeof import("firebase/messaging").getToken;
-        onMessage: typeof import("firebase/messaging").onMessage;
-      };
+      const { getToken, onMessage } = await import("firebase/messaging");
+      const messaging = await getFirebaseMessaging();
+      if (!messaging) return;
 
-      const fcmToken = await getToken(messaging, { vapidKey: FIREBASE_CONFIG.vapidKey });
-      if (!fcmToken) return;
+      console.log("🔧 Getting FCM token...");
+      const fcmToken = await getToken(messaging, {
+        vapidKey: FIREBASE_CONFIG.vapidKey,
+        serviceWorkerRegistration: await navigator.serviceWorker.ready,
+      });
+
+      if (!fcmToken) {
+        console.error("❌ No FCM token returned");
+        return;
+      }
+
+      console.log("✅ FCM Token obtained:", fcmToken.substring(0, 20) + "...");
 
       const client = backend.with({ auth: async () => ({ authorization: `Bearer ${token}` }) });
       await client.attendance.savePushToken({ token: fcmToken });
+      console.log("✅ FCM Token saved to backend!");
 
       onMessage(messaging, (payload) => {
-        if (Notification.permission === "granted") {
-          new Notification(payload.notification?.title ?? "GIS KIA", {
-            body: payload.notification?.body ?? "",
+        console.log("📩 Foreground message:", payload);
+        navigator.serviceWorker.ready.then(reg => {
+          reg.showNotification(payload.notification?.title ?? "GIS KIA Roll Call", {
+            body: payload.notification?.body ?? "Please clock in immediately.",
             icon: "/manifest.json",
+            requireInteraction: true,
           });
-        }
+        });
       });
-    } catch {}
+    } catch (e) {
+      console.error("❌ FCM setup error:", e);
+    }
   }, [token]);
 
   useEffect(() => {
