@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/components/ui/use-toast";
 import { Toaster } from "@/components/ui/toaster";
-import { Clock, LogIn, LogOut, CheckCircle, MapPin, RefreshCw, Loader2, Fingerprint, WifiOff, Wifi } from "lucide-react";
+import { Clock, LogIn, LogOut, CheckCircle, MapPin, RefreshCw, Loader2, Fingerprint, WifiOff, Wifi, CloudOff, CloudUpload } from "lucide-react";
+import { useOfflineQueue } from "../hooks/useOfflineQueue";
 
 function BigClock() {
   const [now, setNow] = useState(new Date());
@@ -72,6 +73,7 @@ export default function ClockPage() {
   const [confirmAction, setConfirmAction] = useState<"in" | "out" | null>(null);
   const [geofence, setGeofence] = useState<GeofenceStatus>({ checking: false, allowed: null });
   const [showRegister, setShowRegister] = useState(false);
+  const { isOnline, queueCount, syncing, lastSynced, manualSync } = useOfflineQueue();
 
   useEffect(() => {
     if (!user) return;
@@ -183,6 +185,30 @@ export default function ClockPage() {
         <p className="text-muted-foreground text-sm">{user?.rank} {user?.fullName} · {user?.staffId}</p>
       </div>
 
+      {!isOnline && (
+        <div className="flex items-center justify-between gap-3 py-2 px-4 rounded-xl bg-red-500/10 border border-red-500/30">
+          <div className="flex items-center gap-2">
+            <CloudOff className="w-4 h-4 text-red-500" />
+            <span className="text-sm font-medium text-red-500">Offline — clock actions will sync when connected</span>
+          </div>
+          {queueCount > 0 && <span className="text-xs bg-red-500 text-white px-2 py-0.5 rounded-full">{queueCount} queued</span>}
+        </div>
+      )}
+      {isOnline && queueCount > 0 && (
+        <div className="flex items-center justify-between gap-3 py-2 px-4 rounded-xl bg-[#006400]/10 border border-[#006400]/30">
+          <div className="flex items-center gap-2">
+            <CloudUpload className="w-4 h-4 text-[#006400]" />
+            <span className="text-sm font-medium text-[#006400]">{syncing ? "Syncing..." : `${queueCount} action${queueCount>1?"s":""} pending sync`}</span>
+          </div>
+          <button onClick={manualSync} disabled={syncing} className="text-xs bg-[#006400] text-white px-3 py-1 rounded-full disabled:opacity-50">Sync Now</button>
+        </div>
+      )}
+      {lastSynced > 0 && (
+        <div className="flex items-center gap-2 py-2 px-4 rounded-xl bg-[#006400]/10 border border-[#006400]/30">
+          <CheckCircle className="w-4 h-4 text-[#006400]" />
+          <span className="text-sm font-medium text-[#006400]">{lastSynced} action{lastSynced>1?"s":""} synced successfully!</span>
+        </div>
+      )}
       <GhanaFlagBar height={5} className="rounded-full overflow-hidden" />
       <BigClock />
 

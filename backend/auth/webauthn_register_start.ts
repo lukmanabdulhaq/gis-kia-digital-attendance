@@ -39,7 +39,7 @@ export const webauthnRegisterStart = api<void, WebAuthnRegisterStartResponse>(
 
     return {
       challenge,
-      rpId: process.env.NODE_ENV === "production" ? "gis-kia-digital-attendance-d6m5lmc82vjjsaq7am4g.lp.dev" : "localhost",
+      rpId: "gis-kia-attendance.vercel.app",
       rpName: "GIS KIA Digital Attendance",
       userId: authData.userID,
       userName: authData.staffId,

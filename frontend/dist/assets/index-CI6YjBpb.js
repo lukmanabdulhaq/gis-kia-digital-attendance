@@ -27433,7 +27433,7 @@ const createLucideIcon = (iconName, iconNode) => {
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$A = [
+const __iconNode$C = [
   [
     "path",
     {
@@ -27443,31 +27443,53 @@ const __iconNode$A = [
   ],
   ["path", { d: "m9 12 2 2 4-4", key: "dzmm74" }]
 ];
-const BadgeCheck = createLucideIcon("badge-check", __iconNode$A);
+const BadgeCheck = createLucideIcon("badge-check", __iconNode$C);
 /**
  * @license lucide-react v0.484.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$z = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
-const Check = createLucideIcon("check", __iconNode$z);
+const __iconNode$B = [["path", { d: "M20 6 9 17l-5-5", key: "1gmf2c" }]];
+const Check = createLucideIcon("check", __iconNode$B);
 /**
  * @license lucide-react v0.484.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$y = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
-const ChevronDown = createLucideIcon("chevron-down", __iconNode$y);
+const __iconNode$A = [["path", { d: "m6 9 6 6 6-6", key: "qrunsl" }]];
+const ChevronDown = createLucideIcon("chevron-down", __iconNode$A);
 /**
  * @license lucide-react v0.484.0 - ISC
  *
  * This source code is licensed under the ISC license.
  * See the LICENSE file in the root directory of this source tree.
  */
-const __iconNode$x = [["path", { d: "m18 15-6-6-6 6", key: "153udz" }]];
-const ChevronUp = createLucideIcon("chevron-up", __iconNode$x);
+const __iconNode$z = [["path", { d: "m18 15-6-6-6 6", key: "153udz" }]];
+const ChevronUp = createLucideIcon("chevron-up", __iconNode$z);
+/**
+ * @license lucide-react v0.484.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$y = [
+  ["path", { d: "M21.801 10A10 10 0 1 1 17 3.335", key: "yps3ct" }],
+  ["path", { d: "m9 11 3 3L22 4", key: "1pflzl" }]
+];
+const CircleCheckBig = createLucideIcon("circle-check-big", __iconNode$y);
+/**
+ * @license lucide-react v0.484.0 - ISC
+ *
+ * This source code is licensed under the ISC license.
+ * See the LICENSE file in the root directory of this source tree.
+ */
+const __iconNode$x = [
+  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
+  ["polyline", { points: "12 6 12 12 16 14", key: "68esgv" }]
+];
+const Clock = createLucideIcon("clock", __iconNode$x);
 /**
  * @license lucide-react v0.484.0 - ISC
  *
@@ -27475,10 +27497,14 @@ const ChevronUp = createLucideIcon("chevron-up", __iconNode$x);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$w = [
-  ["path", { d: "M21.801 10A10 10 0 1 1 17 3.335", key: "yps3ct" }],
-  ["path", { d: "m9 11 3 3L22 4", key: "1pflzl" }]
+  ["path", { d: "m2 2 20 20", key: "1ooewy" }],
+  ["path", { d: "M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193", key: "yfwify" }],
+  [
+    "path",
+    { d: "M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07", key: "jlfiyv" }
+  ]
 ];
-const CircleCheckBig = createLucideIcon("circle-check-big", __iconNode$w);
+const CloudOff = createLucideIcon("cloud-off", __iconNode$w);
 /**
  * @license lucide-react v0.484.0 - ISC
  *
@@ -27486,10 +27512,11 @@ const CircleCheckBig = createLucideIcon("circle-check-big", __iconNode$w);
  * See the LICENSE file in the root directory of this source tree.
  */
 const __iconNode$v = [
-  ["circle", { cx: "12", cy: "12", r: "10", key: "1mglay" }],
-  ["polyline", { points: "12 6 12 12 16 14", key: "68esgv" }]
+  ["path", { d: "M12 13v8", key: "1l5pq0" }],
+  ["path", { d: "M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242", key: "1pljnt" }],
+  ["path", { d: "m8 17 4-4 4 4", key: "1quai1" }]
 ];
-const Clock = createLucideIcon("clock", __iconNode$v);
+const CloudUpload = createLucideIcon("cloud-upload", __iconNode$v);
 /**
  * @license lucide-react v0.484.0 - ISC
  *
@@ -29404,6 +29431,80 @@ function AlertDialogCancel({
     }
   ) });
 }
+const OFFLINE_QUEUE_DB = "gis-kia-offline";
+const OFFLINE_QUEUE_STORE = "clock-queue";
+function openDB() {
+  return new Promise((res, rej) => {
+    const r2 = indexedDB.open(OFFLINE_QUEUE_DB, 1);
+    r2.onupgradeneeded = (e) => e.target.result.createObjectStore(OFFLINE_QUEUE_STORE, { keyPath: "id", autoIncrement: true });
+    r2.onsuccess = () => res(r2.result);
+    r2.onerror = () => rej(r2.error);
+  });
+}
+async function getQueuedActions() {
+  const db = await openDB();
+  return new Promise((res, rej) => {
+    const tx = db.transaction(OFFLINE_QUEUE_STORE, "readonly");
+    const r2 = tx.objectStore(OFFLINE_QUEUE_STORE).getAll();
+    r2.onsuccess = () => res(r2.result.map((x2) => {
+      var _a2;
+      return { id: x2.id, action: ((_a2 = x2.body) == null ? void 0 : _a2.action) ?? "in", timestamp: x2.timestamp };
+    }));
+    r2.onerror = () => rej(r2.error);
+  });
+}
+function useOfflineQueue() {
+  const [isOnline, setIsOnline] = reactExports.useState(navigator.onLine);
+  const [queuedActions, setQueuedActions] = reactExports.useState([]);
+  const [syncing, setSyncing] = reactExports.useState(false);
+  const [lastSynced, setLastSynced] = reactExports.useState(0);
+  const refreshQueue = reactExports.useCallback(async () => {
+    try {
+      setQueuedActions(await getQueuedActions());
+    } catch {
+    }
+  }, []);
+  reactExports.useEffect(() => {
+    refreshQueue();
+  }, [refreshQueue]);
+  reactExports.useEffect(() => {
+    const online = () => {
+      var _a2;
+      setIsOnline(true);
+      if ((_a2 = navigator.serviceWorker) == null ? void 0 : _a2.controller) navigator.serviceWorker.controller.postMessage({ type: "RETRY_QUEUE" });
+    };
+    const offline = () => setIsOnline(false);
+    window.addEventListener("online", online);
+    window.addEventListener("offline", offline);
+    return () => {
+      window.removeEventListener("online", online);
+      window.removeEventListener("offline", offline);
+    };
+  }, []);
+  reactExports.useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    const handler = (e) => {
+      var _a2, _b2;
+      if (((_a2 = e.data) == null ? void 0 : _a2.type) === "OFFLINE_QUEUE_UPDATED") refreshQueue();
+      if (((_b2 = e.data) == null ? void 0 : _b2.type) === "QUEUE_SYNCED") {
+        setSyncing(false);
+        setLastSynced(e.data.synced);
+        refreshQueue();
+        setTimeout(() => setLastSynced(0), 5e3);
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", handler);
+    return () => navigator.serviceWorker.removeEventListener("message", handler);
+  }, [refreshQueue]);
+  const manualSync = reactExports.useCallback(async () => {
+    var _a2;
+    if (!isOnline || !((_a2 = navigator.serviceWorker) == null ? void 0 : _a2.controller)) return;
+    setSyncing(true);
+    navigator.serviceWorker.controller.postMessage({ type: "RETRY_QUEUE" });
+    setTimeout(() => setSyncing(false), 5e3);
+  }, [isOnline]);
+  return { isOnline, queuedActions, queueCount: queuedActions.length, syncing, lastSynced, manualSync, refreshQueue };
+}
 function BigClock() {
   const [now, setNow] = reactExports.useState(/* @__PURE__ */ new Date());
   reactExports.useEffect(() => {
@@ -29436,6 +29537,7 @@ function ClockPage() {
   const [confirmAction, setConfirmAction] = reactExports.useState(null);
   const [geofence, setGeofence] = reactExports.useState({ checking: false, allowed: null });
   const [showRegister, setShowRegister] = reactExports.useState(false);
+  const { isOnline, queueCount, syncing, lastSynced, manualSync } = useOfflineQueue();
   reactExports.useEffect(() => {
     if (!user) return;
     const hour = (/* @__PURE__ */ new Date()).getHours();
@@ -29521,6 +29623,32 @@ function ClockPage() {
         user == null ? void 0 : user.fullName,
         " · ",
         user == null ? void 0 : user.staffId
+      ] })
+    ] }),
+    !isOnline && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-3 py-2 px-4 rounded-xl bg-red-500/10 border border-red-500/30", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CloudOff, { className: "w-4 h-4 text-red-500" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-red-500", children: "Offline — clock actions will sync when connected" })
+      ] }),
+      queueCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-xs bg-red-500 text-white px-2 py-0.5 rounded-full", children: [
+        queueCount,
+        " queued"
+      ] })
+    ] }),
+    isOnline && queueCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center justify-between gap-3 py-2 px-4 rounded-xl bg-[#006400]/10 border border-[#006400]/30", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2", children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx(CloudUpload, { className: "w-4 h-4 text-[#006400]" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "text-sm font-medium text-[#006400]", children: syncing ? "Syncing..." : `${queueCount} action${queueCount > 1 ? "s" : ""} pending sync` })
+      ] }),
+      /* @__PURE__ */ jsxRuntimeExports.jsx("button", { onClick: manualSync, disabled: syncing, className: "text-xs bg-[#006400] text-white px-3 py-1 rounded-full disabled:opacity-50", children: "Sync Now" })
+    ] }),
+    lastSynced > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("div", { className: "flex items-center gap-2 py-2 px-4 rounded-xl bg-[#006400]/10 border border-[#006400]/30", children: [
+      /* @__PURE__ */ jsxRuntimeExports.jsx(CircleCheckBig, { className: "w-4 h-4 text-[#006400]" }),
+      /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "text-sm font-medium text-[#006400]", children: [
+        lastSynced,
+        " action",
+        lastSynced > 1 ? "s" : "",
+        " synced successfully!"
       ] })
     ] }),
     /* @__PURE__ */ jsxRuntimeExports.jsx(GhanaFlagBar, { height: 5, className: "rounded-full overflow-hidden" }),
@@ -52701,6 +52829,17 @@ function AppInner() {
 }
 function App() {
   return /* @__PURE__ */ jsxRuntimeExports.jsx(QueryClientProvider, { client: queryClient, children: /* @__PURE__ */ jsxRuntimeExports.jsx(BrowserRouter, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(AppInner, {}) }) });
+}
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw-offline.js").then((reg) => {
+      console.log("Offline SW registered:", reg.scope);
+      if ("sync" in reg) {
+        reg.sync.register("clock-sync").catch(() => {
+        });
+      }
+    }).catch((err) => console.error("Offline SW failed:", err));
+  });
 }
 ReactDOM$1.createRoot(document.getElementById("root")).render(
   /* @__PURE__ */ jsxRuntimeExports.jsx(React.StrictMode, { children: /* @__PURE__ */ jsxRuntimeExports.jsx(App, {}) })
