@@ -21,6 +21,9 @@
   ],
   "secrets": {
     "FirebaseServiceAccount": {"$env": "FIREBASE_SERVICE_ACCOUNT"},
-    "JWTSecret": {"$env": "JWT_SECRET"}
+    "JWTSecret": {"$env": "JWT_SECRET"},
+    "GmailUser": {"$env": "GMAIL_USER"},
+    "GmailPass": {"$env": "GMAIL_PASS"},
+    "CommanderEmail": {"$env": "COMMANDER_EMAIL"}
   }
 }
