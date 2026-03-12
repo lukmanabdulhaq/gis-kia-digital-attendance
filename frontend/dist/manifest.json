@@ -1,0 +1,13 @@
+{
+  "name": "GIS KIA Digital Attendance",
+  "short_name": "GIS Attendance",
+  "description": "Digital Attendance Register for Ghana Immigration Service at Kotoka International Airport",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#006400",
+  "theme_color": "#006400",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

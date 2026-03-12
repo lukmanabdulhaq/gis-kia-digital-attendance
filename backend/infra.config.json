@@ -1,0 +1,26 @@
+{
+  "$schema": "https://encore.dev/schemas/infra.schema.json",
+  "metadata": {
+    "app_id": "gis-kia-digital-z9b2",
+    "env_name": "production",
+    "env_type": "production",
+    "cloud": "aws",
+    "base_url": "https://gis-kia-digital-attendance-production.up.railway.app"
+  },
+  "sql_servers": [
+    {
+      "host": "ep-snowy-cell-ah0tuxjv-pooler.c-3.us-east-1.aws.neon.tech:5432",
+      "databases": {
+        "db": {
+          "name": "neondb",
+          "username": "neondb_owner",
+          "password": "npg_gazSFiwjH3h9"
+        }
+      }
+    }
+  ],
+  "secrets": {
+    "FirebaseServiceAccount": {"$env": "FIREBASE_SERVICE_ACCOUNT"},
+    "JWTSecret": {"$env": "JWT_SECRET"}
+  }
+}
